@@ -1,5 +1,3 @@
-#[allow(dead_code)]
-
 use bincode::serialize;
 use serde::ser::Serialize;
 use std::cmp::PartialEq;
@@ -79,6 +77,11 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
         hash_table
     }
 
+    // Returns if the Hash Table is empty
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     // Returns the number of elements in the hash table
     pub fn len(&self) -> usize {
         self.len
@@ -137,7 +140,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
                 self.kvs[pos].value = value;
                 return;
             }
-            pos = pos + 1;
+            pos += 1;
         }
 
         // Check if we are overfilling the vector of positions, if so, resize it and try to insert
@@ -156,7 +159,6 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
             deleted: false,
         };
         self.len += 1;
-        return;
     }
 
     // The get method takes a key and returns its value in the hash table
@@ -176,7 +178,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
             if self.kvs[pos].key == *key {
                 return Some(&self.kvs[pos].value);
             }
-            pos = pos + 1;
+            pos += 1;
         }
 
         // The element does not exist
@@ -197,7 +199,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
             if self.kvs[pos].key == *key {
                 return Some(&mut self.kvs[pos].value);
             }
-            pos = pos + 1;
+            pos += 1;
         }
 
         // The element does not exist
@@ -224,13 +226,20 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
                 self.len -= 1;
                 return Some(self.kvs[pos].value.clone());
             }
-            pos = pos + 1;
+            pos += 1;
         }
 
         // The element does not exist
         None
     }
 }
+
+impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> Default for HashTable<Key, Value> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -246,6 +255,19 @@ mod tests {
     fn test_len_when_empty() {
         let hash_table: HashTable<i32, i32> = HashTable::new();
         assert_eq!(hash_table.len(), 0);
+    }
+
+    #[test]
+    fn test_is_empty_when_empty() {
+        let hash_table: HashTable<i32, i32> = HashTable::new();
+        assert!(hash_table.is_empty());
+    }
+
+    #[test]
+    fn test_is_empty_when_not_empty() {
+        let mut hash_table: HashTable<i32, i32> = HashTable::new();
+        hash_table.insert(0, 0);
+        assert!(!hash_table.is_empty());
     }
 
     #[test]
@@ -265,7 +287,7 @@ mod tests {
     fn test_resizing_when_collision(){
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
         for i in 0..(INITIAL_CAPACITY + 1){
-            hash_table.insert(i as i32, 0);
+            hash_table.insert(i.try_into().unwrap(), 0);
         }
         assert_eq!(hash_table.len(), INITIAL_CAPACITY+1);
         assert!(hash_table.size() > 1);
@@ -275,7 +297,7 @@ mod tests {
     fn test_get_load_factor(){
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
         for i in 0..(INITIAL_CAPACITY / 2) as usize{
-            hash_table.insert(i as i32, 0);
+            hash_table.insert(i.try_into().unwrap(), 0);
         }
         assert_eq!(hash_table.load_factor(), 0.5);
     }
@@ -284,7 +306,7 @@ mod tests {
     fn test_resize_when_load_factor_bigger_than_70_percent(){
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
         for i in 0..(INITIAL_CAPACITY * 8 / 10) as usize{
-            hash_table.insert(i as i32, 0);
+            hash_table.insert(i.try_into().unwrap(), 0);
         }
         assert!(hash_table.load_factor() < 8.0 / 20.0);
     }
