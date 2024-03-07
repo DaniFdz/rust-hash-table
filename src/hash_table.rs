@@ -102,14 +102,27 @@ where
 
     // The resize method doubles the size of the hash table when needed
     fn resize(&mut self) {
-        self.kvs.resize(
-            self.size() * 2,
+        let new_size = self.size() * 2;
+        let mut new_kvs = vec![
             HashElement {
                 key: K::default(),
                 value: V::default(),
                 modified: true,
-            },
-        );
+            };
+            new_size
+        ];
+
+        for e in self.kvs.iter() {
+            if e.modified {
+                let hash = hash(&e.key);
+                let mut pos = hash % new_size;
+                while !new_kvs[pos].modified {
+                    pos = (pos + 1) % new_size;
+                }
+                new_kvs[pos] = e.clone();
+            }
+        }
+        self.kvs = new_kvs;
     }
 
     // The insert method takes a key and a value and inserts the key-value pair into the hash table
