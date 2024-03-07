@@ -123,6 +123,11 @@ where
     // If a collision occurs, the next available slot is used
     // If the hash table is full, the hash table is resized
     pub fn insert(&mut self, key: K, value: V) {
+        if let Some(v) = self.get_mut(&key) {
+            *v = value;
+            return;
+        }
+
         // Check if we have to resize the vector of positions
         if self.load_factor() > 0.7 {
             self.resize()
@@ -134,10 +139,6 @@ where
 
         // Find the next available position
         while !self.kvs[pos].modified {
-            if self.kvs[pos].key == key {
-                self.kvs[pos].value = value;
-                return;
-            }
             pos = (pos + 1) % self.size();
         }
 
