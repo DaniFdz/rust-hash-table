@@ -29,8 +29,7 @@ fn hash<K: Serialize>(key: &K) -> usize {
 struct HashElement<Key, Value> {
     key: Key,
     value: Value,
-    default: bool,
-    deleted: bool,
+    modified: bool,
 }
 
 // The HashTable struct has two type parameters, Key and Value
@@ -58,8 +57,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
                 HashElement {
                     key: Key::default(),
                     value: Value::default(),
-                    default: true,
-                    deleted: false,
+                    modified: true,
                 };
                 INITIAL_CAPACITY
             ],
@@ -105,8 +103,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
             HashElement {
                 key: Key::default(),
                 value: Value::default(),
-                default: true,
-                deleted: false,
+                modified: true,
             },
         );
     }
@@ -132,7 +129,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
         let mut pos = hash % self.size();
 
         // Find the next available position
-        while !self.kvs[pos].default && !self.kvs[pos].deleted {
+        while !self.kvs[pos].modified {
             if self.kvs[pos].key == key {
                 self.kvs[pos].value = value;
                 return;
@@ -144,8 +141,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
         self.kvs[pos] = HashElement {
             key,
             value,
-            default: false,
-            deleted: false,
+            modified: false,
         };
         self.len += 1;
     }
@@ -163,7 +159,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
         let mut pos = hash % self.size();
 
         // Find the element in the hash table
-        while !self.kvs[pos].default && !self.kvs[pos].deleted {
+        while !self.kvs[pos].modified {
             if self.kvs[pos].key == *key {
                 return Some(&self.kvs[pos].value);
             }
@@ -184,7 +180,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
         let mut pos = hash % self.size();
 
         // Find the element in the hash table
-        while !self.kvs[pos].default && !self.kvs[pos].deleted {
+        while !self.kvs[pos].modified {
             if self.kvs[pos].key == *key {
                 return Some(&mut self.kvs[pos].value);
             }
@@ -209,9 +205,9 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
         let mut pos = hash % self.size();
 
         // Find the element in the hash table
-        while pos < self.size() && !self.kvs[pos].default && !self.kvs[pos].deleted {
+        while pos < self.size() && !self.kvs[pos].modified {
             if self.kvs[pos].key == key {
-                self.kvs[pos].deleted = true;
+                self.kvs[pos].modified = true;
                 self.len -= 1;
                 return Some(self.kvs[pos].value.clone());
             }
