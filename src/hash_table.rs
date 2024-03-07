@@ -23,40 +23,44 @@ fn hash<K: Serialize>(key: &K) -> usize {
     hash
 }
 
-// The HashElement struct needs to types parameters, Key and Value
-// The Key and Value types must implement the Default and Clone traits
+// The HashElement struct needs to types parameters, K and V
+// The K and V types must implement the Default and Clone traits
 #[derive(Debug, Clone)]
-struct HashElement<Key, Value> {
-    key: Key,
-    value: Value,
+struct HashElement<K, V> {
+    key: K,
+    value: V,
     modified: bool,
 }
 
-// The HashTable struct has two type parameters, Key and Value
-// The Key and Value types must implement the Default and Clone traits
-// The HashTable has a kvs field which is a Vec of tuples of Key and Value types
+// The HashTable struct has two type parameters, K and V
+// The K and V types must implement the Default and Clone traits
+// The HashTable has a kvs field which is a Vec of tuples of K and V types
 // The HashTable has a len field which is the number of elements in the hash table
 // The HashTable has a size field which is the number of elements the hash table can hold without resizing
 #[derive(Debug)]
-pub struct HashTable<Key, Value> {
-    kvs: Vec<HashElement<Key, Value>>,
+pub struct HashTable<K, V> {
+    kvs: Vec<HashElement<K, V>>,
     len: usize,
 }
 
 // Implementation of the HashTable
 //
-// The Key and Value types must implement the Default and Clone traits
-// The HashTable has a kvs field which is a Vec of tuples of Key and Value types
+// The K and V types must implement the Default and Clone traits
+// The HashTable has a kvs field which is a Vec of tuples of K and V types
 //
 // When a collision occurs we use Open Addressing with Linear Probing to handle it
-impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashTable<Key, Value> {
+impl<K, V> HashTable<K, V>
+where
+    K: Default + Clone + Serialize + PartialEq,
+    V: Default + Clone
+{
     // Returns a new HashTable with an initial capacity of <INITIAL_CAPACITY>
     pub fn new() -> Self {
         Self {
             kvs: vec![
                 HashElement {
-                    key: Key::default(),
-                    value: Value::default(),
+                    key: K::default(),
+                    value: V::default(),
                     modified: true,
                 };
                 INITIAL_CAPACITY
@@ -66,7 +70,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
     }
 
     // Returns a new HashTable from a Vec of tuples
-    pub fn from(v: Vec<(Key, Value)>) -> Self {
+    pub fn from(v: Vec<(K, V)>) -> Self {
         let mut hash_table = HashTable::new();
         for (key, value) in v {
             hash_table.insert(key, value);
@@ -101,8 +105,8 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
         self.kvs.resize(
             self.size() * 2,
             HashElement {
-                key: Key::default(),
-                value: Value::default(),
+                key: K::default(),
+                value: V::default(),
                 modified: true,
             },
         );
@@ -118,7 +122,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
     // The key-value pair is inserted using Open Addressing with Linear Probing
     // If a collision occurs, the next available slot is used
     // If the hash table is full, the hash table is resized
-    pub fn insert(&mut self, key: Key, value: Value) {
+    pub fn insert(&mut self, key: K, value: V) {
         // Check if we have to resize the vector of positions
         if self.load_factor() > 0.7 {
             self.resize()
@@ -153,7 +157,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
     //
     // First it will calculate the hash of the key to get the position
     //
-    pub fn get(&self, key: &Key) -> Option<&Value> {
+    pub fn get(&self, key: &K) -> Option<&V> {
         // Calculate the position
         let hash = hash(&key);
         let mut pos = hash % self.size();
@@ -174,7 +178,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
     //
     // If the value exist it will return Some(&mut value)
     // Otherwise it will return None
-    pub fn get_mut(&mut self, key: &Key) -> Option<&mut Value> {
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         // Calculate the position
         let hash = hash(&key);
         let mut pos = hash % self.size();
@@ -199,7 +203,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
     //
     // If the value exist it will return Some(value)
     // Otherwise it will return None
-    pub fn remove(&mut self, key: Key) -> Option<Value> {
+    pub fn remove(&mut self, key: K) -> Option<V> {
         // Calculate the position
         let hash = hash(&key);
         let mut pos = hash % self.size();
@@ -219,8 +223,10 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
     }
 }
 
-impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> Default
-    for HashTable<Key, Value>
+impl<K, V> Default for HashTable<K, V>
+where
+    K: Default + Clone + Serialize + PartialEq,
+    V: Default + Clone,
 {
     fn default() -> Self {
         Self::new()
