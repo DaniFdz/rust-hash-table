@@ -4,7 +4,6 @@ use std::cmp::PartialEq;
 
 const INITIAL_CAPACITY: usize = 64;
 
-
 // The hash function takes a reference to a key and returns a usize
 //
 // To calculate the hash we use the following steps:
@@ -16,11 +15,13 @@ fn hash<K: Serialize>(key: &K) -> usize {
     let bytes = serialize(key).unwrap();
     let mut hash = 0;
     for byte in bytes {
-        hash = (byte as usize).wrapping_add(hash << 6).wrapping_add(hash << 16).wrapping_sub(hash);
+        hash = (byte as usize)
+            .wrapping_add(hash << 6)
+            .wrapping_add(hash << 16)
+            .wrapping_sub(hash);
     }
     hash
 }
-
 
 // The HashElement struct needs to types parameters, Key and Value
 // The Key and Value types must implement the Default and Clone traits
@@ -106,7 +107,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
                 value: Value::default(),
                 default: true,
                 deleted: false,
-            }
+            },
         );
     }
 
@@ -125,6 +126,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
         if self.load_factor() > 0.7 {
             self.resize()
         }
+
         // Calculate the position
         let hash = hash(&key);
         let mut pos = hash % self.size();
@@ -136,14 +138,6 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
                 return;
             }
             pos = (pos + 1) % self.size();
-        }
-
-        // Check if we are overfilling the vector of positions, if so, resize it and try to insert
-        // the element again
-        if pos >= self.size() {
-            self.resize();
-            self.insert(key, value);
-            return;
         }
 
         // Insert the key-value pair
@@ -229,12 +223,13 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
     }
 }
 
-impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> Default for HashTable<Key, Value> {
+impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> Default
+    for HashTable<Key, Value>
+{
     fn default() -> Self {
         Self::new()
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -274,60 +269,60 @@ mod tests {
     #[test]
     fn test_insert_increments_length() {
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
-        hash_table.insert(0, 0) ;
+        hash_table.insert(0, 0);
         assert_eq!(hash_table.len(), 1);
     }
 
     #[test]
-    fn test_insert_string_does_not_panic(){
+    fn test_insert_string_does_not_panic() {
         let mut hash_table: HashTable<String, String> = HashTable::new();
         hash_table.insert("hello".to_string(), "world".to_string());
     }
 
     #[test]
-    fn test_resizing_when_collision(){
+    fn test_resizing_when_collision() {
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
-        for i in 0..(INITIAL_CAPACITY + 1){
+        for i in 0..(INITIAL_CAPACITY + 1) {
             hash_table.insert(i.try_into().unwrap(), 0);
         }
-        assert_eq!(hash_table.len(), INITIAL_CAPACITY+1);
+        assert_eq!(hash_table.len(), INITIAL_CAPACITY + 1);
         assert!(hash_table.size() > 1);
     }
 
     #[test]
-    fn test_get_load_factor(){
+    fn test_get_load_factor() {
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
-        for i in 0..(INITIAL_CAPACITY / 2) as usize{
+        for i in 0..(INITIAL_CAPACITY / 2) as usize {
             hash_table.insert(i.try_into().unwrap(), 0);
         }
         assert_eq!(hash_table.load_factor(), 0.5);
     }
 
     #[test]
-    fn test_resize_when_load_factor_bigger_than_70_percent(){
+    fn test_resize_when_load_factor_bigger_than_70_percent() {
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
-        for i in 0..(INITIAL_CAPACITY * 8 / 10) as usize{
+        for i in 0..(INITIAL_CAPACITY * 8 / 10) as usize {
             hash_table.insert(i.try_into().unwrap(), 0);
         }
         assert!(hash_table.load_factor() < 8.0 / 20.0);
     }
 
     #[test]
-    fn test_insert_and_get(){
+    fn test_insert_and_get() {
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
         hash_table.insert(0, 0);
         assert_eq!(hash_table.get(&0), Some(&0));
     }
 
     #[test]
-    fn test_get_when_key_does_not_exist(){
+    fn test_get_when_key_does_not_exist() {
         let hash_table: HashTable<i32, i32> = HashTable::new();
         assert_eq!(hash_table.get(&0), None);
         assert_eq!(hash_table.get(&1), None);
     }
 
     #[test]
-    fn test_cannot_update_with_get(){
+    fn test_cannot_update_with_get() {
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
         hash_table.insert(0, 0);
         let mut _value = *hash_table.get(&0).unwrap();
@@ -337,7 +332,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_mutable_reference(){
+    fn test_get_mutable_reference() {
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
         hash_table.insert(0, 0);
         let value = hash_table.get_mut(&0).unwrap();
@@ -346,7 +341,7 @@ mod tests {
     }
 
     #[test]
-    fn test_remove(){
+    fn test_remove() {
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
         hash_table.insert(0, 0);
         assert_eq!(hash_table.remove(0), Some(0));
@@ -354,22 +349,24 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_when_key_does_not_exist(){
+    fn test_remove_when_key_does_not_exist() {
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
         assert_eq!(hash_table.remove(0), None);
     }
 
     #[test]
-    fn test_insert_after_removed(){
+    fn test_insert_after_removed() {
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
         hash_table.insert(0, 0);
         hash_table.remove(0);
+        assert_eq!(hash_table.len(), 0);
         hash_table.insert(0, 1);
         assert_eq!(hash_table.get(&0), Some(&1));
+        assert_eq!(hash_table.len(), 1);
     }
 
     #[test]
-    fn test_hash_table_from_vector(){
+    fn test_hash_table_from_vector() {
         let hash_table = HashTable::from(vec![(0, 0), (1, 1), (2, 2)]);
         assert_eq!(hash_table.get(&0), Some(&0));
         assert_eq!(hash_table.get(&1), Some(&1));
