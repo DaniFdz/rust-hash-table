@@ -16,7 +16,7 @@ fn hash<K: Serialize>(key: &K) -> usize {
     let bytes = serialize(key).unwrap();
     let mut hash = 0;
     for byte in bytes {
-        hash = byte as usize + (hash << 6) + (hash << 16) - hash;
+        hash = (byte as usize).wrapping_add(hash << 6).wrapping_add(hash << 16).wrapping_sub(hash);
     }
     hash
 }
@@ -124,8 +124,6 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
     // If a collision occurs, the next available slot is used
     // If the hash table is full, the hash table is resized
     pub fn insert(&mut self, key: Key, value: Value) {
-        // FIX: Inserting an string caused a Buffer Overflow exception
-
         // Check if we have to resize the vector of positions
         if self.load_factor() > 0.7 {
             self.resize()
@@ -135,12 +133,12 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
         let mut pos = hash % self.size();
 
         // Find the next available position
-        while pos < self.size() && !self.kvs[pos].default && !self.kvs[pos].deleted {
+        while !self.kvs[pos].default && !self.kvs[pos].deleted {
             if self.kvs[pos].key == key {
                 self.kvs[pos].value = value;
                 return;
             }
-            pos += 1;
+            pos = (pos + 1) % self.size();
         }
 
         // Check if we are overfilling the vector of positions, if so, resize it and try to insert
@@ -168,17 +166,17 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
     //
     // First it will calculate the hash of the key to get the position
     //
-    pub fn get(&mut self, key: &Key) -> Option<&Value> {
+    pub fn get(&self, key: &Key) -> Option<&Value> {
         // Calculate the position
         let hash = hash(&key);
         let mut pos = hash % self.size();
 
         // Find the element in the hash table
-        while pos < self.size() && !self.kvs[pos].default && !self.kvs[pos].deleted {
+        while !self.kvs[pos].default && !self.kvs[pos].deleted {
             if self.kvs[pos].key == *key {
                 return Some(&self.kvs[pos].value);
             }
-            pos += 1;
+            pos = (pos + 1) % self.size();
         }
 
         // The element does not exist
@@ -195,11 +193,11 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
         let mut pos = hash % self.size();
 
         // Find the element in the hash table
-        while pos < self.size() && !self.kvs[pos].default && !self.kvs[pos].deleted {
+        while !self.kvs[pos].default && !self.kvs[pos].deleted {
             if self.kvs[pos].key == *key {
                 return Some(&mut self.kvs[pos].value);
             }
-            pos += 1;
+            pos = (pos + 1) % self.size();
         }
 
         // The element does not exist
@@ -226,7 +224,7 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
                 self.len -= 1;
                 return Some(self.kvs[pos].value.clone());
             }
-            pos += 1;
+            pos = (pos + 1) % self.size();
         }
 
         // The element does not exist
@@ -284,6 +282,12 @@ mod tests {
     }
 
     #[test]
+    fn test_insert_string_does_not_panic(){
+        let mut hash_table: HashTable<String, String> = HashTable::new();
+        hash_table.insert("hello".to_string(), "world".to_string());
+    }
+
+    #[test]
     fn test_resizing_when_collision(){
         let mut hash_table: HashTable<i32, i32> = HashTable::new();
         for i in 0..(INITIAL_CAPACITY + 1){
@@ -320,7 +324,7 @@ mod tests {
 
     #[test]
     fn test_get_when_key_does_not_exist(){
-        let mut hash_table: HashTable<i32, i32> = HashTable::new();
+        let hash_table: HashTable<i32, i32> = HashTable::new();
         assert_eq!(hash_table.get(&0), None);
         assert_eq!(hash_table.get(&1), None);
     }
@@ -365,5 +369,15 @@ mod tests {
         hash_table.remove(0);
         hash_table.insert(0, 1);
         assert_eq!(hash_table.get(&0), Some(&1));
+    }
+
+    #[test]
+    fn test_hash_table_from_vector(){
+        let hash_table = HashTable::from(vec![(0, 0), (1, 1), (2, 2)]);
+        assert_eq!(hash_table.get(&0), Some(&0));
+        assert_eq!(hash_table.get(&1), Some(&1));
+        assert_eq!(hash_table.get(&2), Some(&2));
+        assert_eq!(hash_table.get(&3), None);
+        assert_eq!(hash_table.len(), 3);
     }
 }
