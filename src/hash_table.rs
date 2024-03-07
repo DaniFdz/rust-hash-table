@@ -41,7 +41,6 @@ struct HashElement<Key, Value> {
 pub struct HashTable<Key, Value> {
     kvs: Vec<HashElement<Key, Value>>,
     len: usize,
-    size: usize,
 }
 
 // Implementation of the HashTable
@@ -63,7 +62,6 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
                 };
                 INITIAL_CAPACITY
             ],
-            size: INITIAL_CAPACITY,
             len: 0,
         }
     }
@@ -89,21 +87,20 @@ impl<Key: Default + Clone + Serialize + PartialEq, Value: Default + Clone> HashT
 
     // Returns how many elements the hash table can hold without resizing
     pub fn size(&self) -> usize {
-        self.size
+        self.kvs.len()
     }
 
     // Calculates the load factor of the hash table with the formula:
     // load factor = number of elements / size of the hash table
     // The load factor is a measure of how full the hash table is
     fn load_factor(&self) -> f64 {
-        self.len as f64 / self.size as f64
+        self.len as f64 / self.size() as f64
     }
 
     // The resize method doubles the size of the hash table when needed
     fn resize(&mut self) {
-        self.size *= 2;
         self.kvs.resize(
-            self.size,
+            self.size() * 2,
             HashElement {
                 key: Key::default(),
                 value: Value::default(),
